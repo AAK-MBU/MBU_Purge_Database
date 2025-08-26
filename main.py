@@ -6,7 +6,7 @@ import os
 from typing import Dict, Any, Union, Tuple
 from dateutil import parser
 import pyodbc
-from mbu_dev_shared_components.database.logging import log_event, _send_heartbeat
+from mbu_dev_shared_components.database import RPAConnection
 # from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 
 from config import LOG_DB, LOG_CONTEXT, ENV
@@ -115,30 +115,28 @@ def list_stored_procedures():
 
 def main():
     """Function to run purge procedure on database and log heartbeat and events"""
-    _send_heartbeat(
-        servicename="SQL data base purge",
-        status="RUNNING",
-        details="",
-        db_env=ENV
+    with RPAConnection(db_env="PROD", commit=True) as rpa_conn:
+        rpa_conn._send_heartbeat(
+            servicename="SQL data base purge",
+            status="RUNNING",
+            details=""
+            )
+        rpa_conn.log_event(
+            log_db=LOG_DB,
+            level="INFO",
+            message="Running purge of database",
+            context=LOG_CONTEXT
         )
-    log_event(
-        log_db=LOG_DB,
-        level="INFO",
-        message="Running purge of database",
-        context=LOG_CONTEXT,
-        db_env=ENV
-    )
-    res = execute_stored_procedure(
-        os.getenv("DbConnectionString"),
-        'RPA.journalizing.sp_UpdatePurgeMarker',
-    )
-    log_event(
-        log_db=LOG_DB,
-        level="INFO",
-        message=f"Purged {res["rows_updated"]} forms",
-        context=LOG_CONTEXT,
-        db_env=ENV
-    )
+        res = execute_stored_procedure(
+            os.getenv("DbConnectionString"),
+            'RPA.journalizing.sp_UpdatePurgeMarker',
+        )
+        rpa_conn.log_event(
+            log_db=LOG_DB,
+            level="INFO",
+            message=f"Purged {res['rows_updated']} forms",
+            context=LOG_CONTEXT
+        )
 
 
 if __name__ == '__main__':
