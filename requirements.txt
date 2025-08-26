@@ -1,1 +1,2 @@
 mbu_dev_shared_components>=0.4.4
+pyodbc
